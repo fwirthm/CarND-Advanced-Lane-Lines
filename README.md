@@ -1,5 +1,6 @@
 ## Advanced Lane Finding
 [![Udacity - Self-Driving Car NanoDegree](https://s3.amazonaws.com/udacity-sdc/github/shield-carnd.svg)](http://www.udacity.com/drive)
+![Lanes Image](./examples/example_output.jpg)
 
 This project belongs to my work towards Udacitys 'Self-Driving Car Engineer' Nanodegree. The general project goal is to write a software pipeline identifying the lane boundaries in a video. A more detailed description of the project goals can be found below.
 
