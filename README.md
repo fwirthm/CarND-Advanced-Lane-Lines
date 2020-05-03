@@ -1,6 +1,6 @@
 ## Advanced Lane Finding
 [![Udacity - Self-Driving Car NanoDegree](https://s3.amazonaws.com/udacity-sdc/github/shield-carnd.svg)](http://www.udacity.com/drive)
-![Lanes Image](./examples/example_output.jpg)
+
 
 This project belongs to my work towards Udacitys 'Self-Driving Car Engineer' Nanodegree. The general project goal is to write a software pipeline identifying the lane boundaries in a video. A more detailed description of the project goals can be found below.
 
@@ -19,119 +19,314 @@ The goals / steps of this project are the following:
 * Warp the detected lane boundaries back onto the original image.
 * Output visual display of the lane boundaries and numerical estimation of lane curvature and vehicle position.
 
-The images for camera calibration are stored in the folder called `camera_cal`. The images in `test_images` are for testing the pipeline on single frames. The `output_images` folder contains example images showing intermediate outputs at all stages of the pipeline.
-
-**Todo: Wie sind die Unterordner bezeichnet und was ist jeweils drin **
+The project structured is as follows:
+* There are 3 **IPython notebooks** were the above goals are approached stepwise
+ * `1_camera_cal.ipynb`: determining and saving the camera calibration parameters
+ * `2_develop_pipeline.ipynb`: developing the image processing pipeline and determining its parameters with single test images
+ * `3_process_videos.ipynb`: applying the developed pipeline on video streams
+* In addition the **python file** `pipeline_functions.py` contains the functions of the developed pipeline
+* The **folders** are structured as follows:
+ * `camera_cal` contains images for camera calibration 
+ * `test_images` contains images for testing the pipeline on single frames
+ * `output_images` contains example (single) images showing intermediate outputs at all stages of the pipeline
+      * `output_images/binary_sobelx_colorthresh` contains binary images showing pixels which are highly likely to belong to lanemarkings
+      * `output_images/camera_cal` contains the undistorted versions of the chessboard images from `camera_cal`
+      * `output_images/calibrated` contains the undistorted versions of the testimages images from `test_images`
+      * `output_images/intermediate_examples_for_readme` conatins intermediate images used for this readme
+      * `output_images/warped_color` contains warped versions of the testimages images from `test_images`
+      * `output_images/warped_binary` contains warped versions of the binary images from `binary_sobelx_colorthresh`
+      * `output_images/polyfit` contains example images of the fitted polynomials in 3 different styles
+          * not annotated: showing the positions of the detected windows during polynomial fitting, the output polynomial and colored variants of the pixels belonging to the left (red) and right lane marking (blue) as well as pixels detected as noise in white
+          * annotated with `_rewarped`: showing the fitted polynomial and the red and blue pixels rewarped to the image space
+          * annotated with `_overlayed`: showing the rewarped fitted polynomial as overlay over the original (undistorted) image
+          * annotated with `_withcrv`: showing the overlayed image together with the calculated curvature and offset to the lane center
+ * `examples` contains examples provided by Udacity showing desired outputs at different stages of the pipeline
+ * `output_videos` contains videos processed with the developed pipeline
+ * `input_videos` contains the unprocessed input videos
+ * `params` contains the parameters for camera calibration and for the image processing pipeline  
+* In addition the project contains this readme and a license file
 
 The video called `project_video.mp4` is the video the pipeline should work well on. The `challenge_video.mp4` video is an extra (and optional) challenge to test the pipeline under somewhat trickier conditions.  The `harder_challenge.mp4` video is another optional challenge and is brutal!
 
-<!---If you want to extract more test images from the videos, you can simply use an image writing method like `cv2.imwrite()`, i.e., you can read the video in frame by frame as usual, and for frames you want to save for later you can write to an image file. If you're feeling ambitious (again, totally optional though), don't stop there!  We encourage you to go out and take video of your own, calibrate your camera and show us how you would implement this project from scratch!-->
+### 1. Camera Calibration
+The camera calibration is performed in the notebook `1_camera_cal.ipynb`. First, the size of the used chessboard is determined by visualizing example images and counting the inner corners. Afterwards, the code iterates over each image, performs a grayscale conversion using `cv2.cvtColor()` and detects the inner corners automatically using `cv2.findChessboardCorners()`(cf. Fig. 1.1). 
+
+<figure>
+ <img src="./output_images/intermediate_examples_for_readme/calibration8.jpg" width="380" alt="corner detection image" />
+ <figcaption>
+ <p></p> 
+ <p style="text-align: center;"> Fig. 1.1: Detecting inner chessboard corners</p> 
+ </figcaption>
+</figure>
+ <p></p>
+
+If all expected corners could be found, the positions in the image and the expected positions (simply the x and y indizes - z is always 0 assuming plane images) are added to lists holding these points (`objpoints` and `imgpoints`). These list are then used to determine the camera paramters using the opencv function `cv2.calibrateCamera()`. The determined parameters are saved as pickle files and can now be used to undistort images as shown below (cf. Fig. 1.2 and Fig. 1.3).
+
+<figure>
+ <img src="./camera_cal/calibration1.jpg" width="380" alt="distorted chessboard" />
+ <figcaption>
+ <p></p> 
+ <p style="text-align: center;"> Fig. 1.2: original (distorted) image</p> 
+ </figcaption>
+</figure>
+ <p></p>
+ 
+ <figure>
+ <img src="./output_images/camera_cal/calibration1.jpg" width="380" alt="undistorted chessboard" />
+ <figcaption>
+ <p></p> 
+ <p style="text-align: center;"> Fig. 1.3: processed (undistorted) image</p> 
+ </figcaption>
+</figure>
+ <p></p>
+
+### 2. Pipeline (single images)
+The development of the image processing pipeline with single images performed in the notebook `2_develop_pipeline.ipynb` and comprises the following steps:
+
+#### 2.1 Undistort Images
+The distortion correction is performed within the notebook under 2.1 using the parameters as determimed by and using the same techniques as inroduced in Sec. 1. Thereby a loop runs across all testimages and saves the undistorted images to `output_images/calibrated`. The figures below show an example of an distorted input image (cf. Fig. 2.1) and it's undistorted equivalent (cf. Fig. 2.2).
+
+<figure>
+ <img src="./test_images/test6.jpg" width="380" alt="distorted image" />
+ <figcaption>
+ <p></p> 
+ <p style="text-align: center;"> Fig. 2.1: original (distorted) image</p> 
+ </figcaption>
+</figure>
+ <p></p>
+ 
+ <figure>
+ <img src="./output_images/calibrated/test6.jpg" width="380" alt="undistorted image" />
+ <figcaption>
+ <p></p> 
+ <p style="text-align: center;"> Fig. 2.2: processed (undistorted) image</p> 
+ </figcaption>
+</figure>
+ <p></p>
+
+#### 2.2 Binary Mask Developement
+
+To identify pixels which are highly likely to belong to the lane markings a combination of color and gradient thresholding as well as a region of interest selection are used in `2_develop_pipeline.ipynb` under 2.2. For the region of interest a pants shaped polygon (cf. Fig. 2.3) was found to obtain good results. This region shape helps to suppress erroneous detections from all other methods which are outside of the expected area of the lane markings. Therefore, the roi mask is connected with a logical "and" with all other conditions.
+
+<figure>
+ <img src="./output_images/intermediate_examples_for_readme/mask.jpg" width="380" alt="roi image" />
+ <figcaption>
+ <p></p> 
+ <p style="text-align: center;"> Fig. 2.3: binary region of interest mask</p> 
+ </figcaption>
+</figure>
+ <p></p>
+
+The actual detections are achieved through a logical "or" combination between an "and" connection of a low threhold in the color space and a high one in the gradient space (cf. Fig. 2.4) with a combination with opposite characteristics (cf. Fig. 2.5):
+
+(high_color_threh AND low_gradient_thresh) OR (low_color_threh AND high_gradient_thresh)
 
 
-### Camera Calibration
+The merit behind this decission is that in one case the detection is primary made and already relatively reliable based on the color channel and afterwards confirmed by the gradient channel. The second conditions performs the detection just the other way around. Detections in the color space are helpfull during good visibility conditions, where gradient detections constitute a good solution for example in shadowed regions.
 
-#### 1. Briefly state how you computed the camera matrix and distortion coefficients. Provide an example of a distortion corrected calibration image.
+<figure>
+ <img src="./output_images/intermediate_examples_for_readme/challenging_combined_2.jpg" width="380" alt="combination 2 image" />
+ <figcaption>
+ <p></p> 
+ <p style="text-align: center;"> Fig. 2.4: low threhold in the color space and a high one in the gradient space (for original image see Fig 2.15)</p> 
+ </figcaption>
+</figure>
+ <p></p>
 
-The code for this step is contained in the first code cell of the IPython notebook located in "./examples/example.ipynb" (or in lines # through # of the file called `some_file.py`).  
+<figure>
+ <img src="./output_images/intermediate_examples_for_readme/challenging_combined_1.jpg" width="380" alt="combination 1 image" />
+ <figcaption>
+ <p></p> 
+ <p style="text-align: center;"> Fig. 2.5: high threhold in the color space and a low one in the gradient space</p> 
+ </figcaption>
+</figure>
+ <p></p>
 
-I start by preparing "object points", which will be the (x, y, z) coordinates of the chessboard corners in the world. Here I am assuming the chessboard is fixed on the (x, y) plane at z=0, such that the object points are the same for each calibration image.  Thus, `objp` is just a replicated array of coordinates, and `objpoints` will be appended with a copy of it every time I successfully detect all chessboard corners in a test image.  `imgpoints` will be appended with the (x, y) pixel position of each of the corners in the image plane with each successful chessboard detection.  
-
-I then used the output `objpoints` and `imgpoints` to compute the camera calibration and distortion coefficients using the `cv2.calibrateCamera()` function.  I applied this distortion correction to the test image using the `cv2.undistort()` function and obtained this result: 
-
-![alt text][image1]
+Combining the above ouputs and the ROI mask creates Fig. 2.6:
 
 
+<figure>
+ <img src="./output_images/intermediate_examples_for_readme/challenging_combined_binary.jpg" width="380" alt="combined thresholds image" />
+ <figcaption>
+ <p></p> 
+ <p style="text-align: center;"> Fig. 2.6: binary image (combined gradients and color thresholds)</p> 
+ </figcaption>
+</figure>
+ <p></p>
 
-OpenCV functions or other methods were used to calculate the correct camera matrix and distortion coefficients using the calibration chessboard images provided in the repository (note these are 9x6 chessboard images, unlike the 8x6 images used in the lesson). The distortion matrix should be used to un-distort one of the calibration images provided as a demonstration that the calibration is correct. Example of undistorted calibration image is Included in the writeup (or saved to a folder).
+To fill pixels inside detected structures morphologic operations are applied (dilatation followed by erosion) creating the following results (cf. Fig. 2.7).
 
-### Pipeline (single images)
+<figure>
+ <img src="./output_images/intermediate_examples_for_readme/challenging_binary_final.jpg" width="380" alt="binary result image" />
+ <figcaption>
+ <p></p> 
+ <p style="text-align: center;"> Fig. 2.7: resulting binary output</p> 
+ </figcaption>
+</figure>
+ <p></p>
 
-#### 1. Provide an example of a distortion-corrected image.
 
-To demonstrate this step, I will describe how I apply the distortion correction to one of the test images like this one:
-![alt text][image2]
+An example binary output for another challenging input image (cf. Fig. 2.8) containing shadows can be found in Fig. 2.9. More such examples can be found in `/output_images/binary_sobelx_colorthresh/`.
 
-Distortion correction that was calculated via camera calibration has been correctly applied to each image. An example of a distortion corrected image should be included in the writeup (or saved to a folder) and submitted with the project.
+<figure>
+ <img src="./output_images/calibrated/test4.jpg" width="380" alt="input image" />
+ <figcaption>
+ <p></p> 
+ <p style="text-align: center;"> Fig. 2.8: example input image</p> 
+ </figcaption>
+</figure>
+ <p></p>
 
-#### 2. Describe how (and identify where in your code) you used color transforms, gradients or other methods to create a thresholded binary image.  Provide an example of a binary image result.
+<figure>
+ <img src="./output_images/binary_sobelx_colorthresh/test4.jpg" width="380" alt="binary output image" />
+ <figcaption>
+ <p></p> 
+ <p style="text-align: center;"> Fig. 2.9: example binary output image</p> 
+ </figcaption>
+</figure>
+ <p></p>
 
-I used a combination of color and gradient thresholds to generate a binary image (thresholding steps at lines # through # in `another_file.py`).  Here's an example of my output for this step.  (note: this is not actually from one of the test images)
+#### 2.3 Perspective Transform
 
-![alt text][image3]
+To apply a proper perspective transformation from image space to a warped space from a bird's-eye view, the four edges of a polygon in image space which should define a rectangular region in the warped space needs to be determined. The easiest way to do so, is to use the outer boarders of the lane markings from an image where the lane markings are known to be straight. Dig. 2.10 visalizes an example of the defined polygon in the image space with a straight lane marking example. 
 
-A method or combination of methods (i.e., color transforms, gradients) has been used to create a binary image containing likely lane pixels. There is no "ground truth" here, just visual verification that the pixels identified as part of the lane lines are, in fact, part of the lines. Example binary images should be included in the writeup (or saved to a folder) and submitted with the project.
+<figure>
+ <img src="./output_images/intermediate_examples_for_readme/straight_lines1_perspective_transform_vertex.jpg" width="380" alt="unwarped example 1" />
+ <figcaption>
+ <p></p> 
+ <p style="text-align: center;"> Fig. 2.10: polygon in image space</p> 
+ </figcaption>
+</figure>
+ <p></p>
+ 
+In addition to the polygon edges in the image space, the edges of the desired rectangle in the warped space needs to be defined. With these values it is possible to calcaluate the transformation Matrix M as well as it's inverse through the opencv function `getPerspectiveTransform()`. Applying the determined transformation results in Fig. 2.11. For an example with curved lane markings (cf. Fig. 2.12) the transformed color picture is shown in Fig. 2.13. Note that the same transformation can also be applied on binary input images with the same dimensions. The described steps are developed in `2_develop_pipeline.ipynb` under 2.3.
 
-#### 3. Describe how (and identify where in your code) you performed a perspective transform and provide an example of a transformed image.
 
-The code for my perspective transform includes a function called `warper()`, which appears in lines 1 through 8 in the file `example.py` (output_images/examples/example.py) (or, for example, in the 3rd code cell of the IPython notebook).  The `warper()` function takes as inputs an image (`img`), as well as source (`src`) and destination (`dst`) points.  I chose the hardcode the source and destination points in the following manner:
+<figure>
+ <img src="./output_images/warped_color/straight_lines1.jpg" width="380" alt="warped example 1" />
+ <figcaption>
+ <p></p> 
+ <p style="text-align: center;"> Fig. 2.11: polygon of Fig. 2.11 in warped space</p> 
+ </figcaption>
+</figure>
+ <p></p>
+ 
+ <figure>
+ <img src="./output_images/intermediate_examples_for_readme/test2_perspective_transform_vertex.jpg" width="380" alt="unwarped example 2" />
+ <figcaption>
+ <p></p> 
+ <p style="text-align: center;"> Fig. 2.12: polygon in image space</p> 
+ </figcaption>
+</figure>
+ <p></p>
+ 
+<figure>
+ <img src="./output_images/warped_color/test2.jpg" width="380" alt="warped example 2" />
+ <figcaption>
+ <p></p> 
+ <p style="text-align: center;"> Fig. 2.13: polygon of Fig. 2.12 in image space</p> 
+ </figcaption>
+</figure>
+ <p></p>
 
-```python
-src = np.float32(
-    [[(img_size[0] / 2) - 55, img_size[1] / 2 + 100],
-    [((img_size[0] / 6) - 10), img_size[1]],
-    [(img_size[0] * 5 / 6) + 60, img_size[1]],
-    [(img_size[0] / 2 + 55), img_size[1] / 2 + 100]])
-dst = np.float32(
-    [[(img_size[0] / 4), 0],
-    [(img_size[0] / 4), img_size[1]],
-    [(img_size[0] * 3 / 4), img_size[1]],
-    [(img_size[0] * 3 / 4), 0]])
-```
 
-This resulted in the following source and destination points:
 
-| Source        | Destination   | 
-|:-------------:|:-------------:| 
-| 585, 460      | 320, 0        | 
-| 203, 720      | 320, 720      |
-| 1127, 720     | 960, 720      |
-| 695, 460      | 960, 0        |
+#### 2.4 Identifying lane-line pixels and polynomial fitting
 
-I verified that my perspective transform was working as expected by drawing the `src` and `dst` points onto a test image and its warped counterpart to verify that the lines appear parallel in the warped image.
+After trandforming the binary images of the pixels which were detected to be highly likely to belong to the lane markings, the next step in the processing pipeline is to decide which pixels belong to left and to the right marking and to fit polynomials 
+describing the markings based on the detections. This step is performed `2_develop_pipeline.ipynb` under 2.4. For the development of the code, snipets of the original code from the Udacity lesson have been used to determine the best fit of the search windows. However, the code was restructured into the three functions `find_lane_pixels()`, `fit_polynomial()` and `visualize_polyfit()`. Therefore, the detection of pixels belonging to the markings, the fitting of the lane polynomials and its visualization are now logical devided.
 
-![alt text][image4]
+#### `visualize_polyfit()`:
+This function calls the two other functions and allows several parametrizations. For example, the degree of the polynomial to be fitted can be varied. In addition, it is possible to visualize or hide the detection windows (described below), to colorize the detected marking pixels, to hide pixels detected as noise and to colorize the space between the fitted lane marking polynomials. If the function is used with the following parameters: {colorize_markings=True, show_windows=False, suppress_noise=True, colorize_lane=True} it is possible to create overlay images which can be rewarped to the image space (cf. Fig. 2.14 ) and used as overlay over the original image (cf. Fig. 2.15).
 
-OpenCV function or other method has been used to correctly rectify each image to a "birds-eye view". Transformed images should be included in the writeup (or saved to a folder) and submitted with the project.
 
-#### 4. Describe how (and identify where in your code) you identified lane-line pixels and fit their positions with a polynomial?
+<figure>
+  <img src="./output_images/polyfit/challenging_rewarped.jpg" width="380" alt="determining transform vertex" />
+ <figcaption>
+ <p></p> 
+ <p style="text-align: center;"> Fig. 2.14: visualization of fitted lane polynomials rewarped to image space</p> 
+ </figcaption>
+</figure>
+ <p></p>
+ 
+ <figure>
+  <img src="./output_images/polyfit/challenging_overlayed.jpg" width="380" alt="determining transform vertex" />
+ <figcaption>
+ <p></p> 
+ <p style="text-align: center;"> Fig. 2.15: visualization of fitted lane polynomials rewarped to image space and overlayed over the original image</p> 
+ </figcaption>
+</figure>
+ <p></p>
 
-Then I did some other stuff and fit my lane lines with a 2nd order polynomial kinda like this:
+#### `find_lane_pixels()`:
+This function detects which pixels belong to the left and to the right lane marking. To do so, a histogram along the vertical axis of the image is created and divided into the left and right half of the image (cf. Fig. 2.16). Afterwards, the center of gravity is computed for each half.
 
-![alt text][image5]
 
-Methods have been used to identify lane line pixels in the rectified binary image. The left and right line have been identified and fit with a curved functional form (e.g., spine or polynomial). Example images with line pixels identified and a fit overplotted should be included in the writeup (or saved to a folder) and submitted with the project.
+<figure>
+  <img src="./output_images/intermediate_examples_for_readme/hist_test2.jpg" width="380" alt="determining transform vertex" />
+ <figcaption>
+ <p></p> 
+ <p style="text-align: center;"> Fig. 2.16: histogram used in `find_lane_pixels()`; yellow line: half plane separation;
+     red: center of left marking; blue: center of right marking</p> 
+ </figcaption>
+</figure>
+ <p></p>
 
-#### 5. Describe how (and identify where in your code) you calculated the radius of curvature of the lane and the position of the vehicle with respect to center.
+The determined x positions are used to initialise a sliding window search, which searches at different y positions for the best fit of a window on the left and right markings. To do so, at each y position all pixels are included which are in a certain range around the vertical center of gravity of the last window. The function returs the x and y positions of the pixels belonging to the left and respectively to the right marking as well as the boundaries of the detection windows. Fig 2.17 shows the outputs of this function along with the outputs of `fit_polynomial()` visualized by the `visualize_polyfit()` function for a challenging example.
 
-I did this in lines # through # in my code in `my_other_file.py`
+<figure>
+ <img src="./output_images/polyfit/challenging.jpg" width="380" alt="fitted polynomial image" />
+ <figcaption>
+ <p></p> 
+ <p style="text-align: center;"> Fig. 2.17: fitted polynomial (2nd order) visualized with `visualize_polyfit()`; red: pixels belonging to the left marking; blue: pixels belonging to the left marking; white: pixels detected as noise; yellow: fitted polynomials and detection windows;</p> 
+ </figcaption>
+</figure>
+ <p></p>
 
-Here the idea is to take the measurements of where the lane lines are and estimate how much the road is curving and where the vehicle is located with respect to the center of the lane. The radius of curvature may be given in meters assuming the curve of the road follows a circle. For the position of the vehicle, you may assume the camera is mounted at the center of the car and the deviation of the midpoint of the lane from the center of the image is the offset you're looking for. As with the polynomial fitting, convert from pixels to meters.
+#### `fit_polynomial()`: 
+This function each fits a polynomial through the pixels detected as left and right marking pixels and returns the polynomial parameters. If it should not be possible to fit one of the polynomials (e. g. as there are no detected pixels) the polynomial for the other side is adopted and shifted assuming parallel lane markings. 
 
-#### 6. Provide an example image of your result plotted back down onto the road such that the lane area is identified clearly.
 
-I implemented this step in lines # through # in my code in `yet_another_file.py` in the function `map_lane()`.  Here is an example of my result on a test image:
+#### 2.5. Calculate curvature and distance to center line
+In addition to the previous steps, the curvature of the road as well as the lateral offset of the vehicle to the center of the lane shall be determined. This step is performed `2_develop_pipeline.ipynb` under 2.5. To do so, the `visualize_polyfit()` function is extended with the two options `rewarp` (returns a rewarped version of the overlay) and `show_crv` (calculates curvature, width of the lane and distance to lane center and visualizes it on the image). To estimate the vurvature of the road, the indizes of the pixels detected as left and right marking are transformed to positions in meters. Afterwards, the polynomial is re-fitted in this real world coordinates and the curvature values at the bootom of the image are estimated with the `measure_curvature_pixels()` function. This function uses an equation based on the derivation of the 2nd order polynomial to calculate the curvatures for both the left and the right polynomial. Afterwards, the x positions (in meters) of the two polynomials are calculated and utilized to calculate the postion of the lane center, the width of the lane as well as the lateral offset to the lane center, where (according to ISO) a vehicle position on the left of the center obtains a postive offset and a vehicle at the right of the lane center a negative value. In addition the reliability of the two estimated lane markings is obtained through containing the pixels which were detected for each side and dividing it by the experimentally determined value 80000. Afterwards, the reliabilities are limited to a range of 0 and 1. The reliability value is then used, to decided which curvature value shall be presented.
 
-![alt text][image6]
+The overall results of the developed image processing pipeline is shown in Fig. 2.18.
 
-The fit from the rectified image has been warped back onto the original image and plotted to identify the lane boundaries. This should demonstrate that the lane boundaries were correctly identified. An example image with lanes, curvature, and position from center should be included in the writeup (or saved to a folder) and submitted with the project.
+<figure>
+ <img src="./output_images/polyfit/test5_overlayed_withcrv.jpg" width="550" alt="final image" />
+ <figcaption>
+ <p></p> 
+ <p style="text-align: center;"> Fig. 2.18: pipeline output</p> 
+ </figcaption>
+</figure>
+ <p></p>
 
----
 
-### Pipeline (video)
+### 3. Pipeline (video)
 
-#### 1. Provide a link to your final video output.  Your pipeline should perform reasonably well on the entire project video (wobbly lines are ok but no catastrophic failures that would cause the car to drive off the road!).
+To apply the developed image processing pipeline on videos rather than on single images, the neccesary code was wrapped into functions and moved to `pipeline_functions.py`. These functions and the determined parameters are imported and afterwards used in `3_process_videos.ipynb` to process video streams. First of all the developed methods are used to produce videos solely extracting the pixels which were detected as potential lane marking pxiels and rewarping them to the image space. Afterwards, The developed methods are expanded by several functions using temporal relations between adjacent images for smoothing and sanity checking. To do so, the new class `ProcessImageStream` is implemented. This class is able to store a history of reliability values and polynomial coefficients as well as the last detected values (and reliable values) for the curvature of the lane and its width. To account for the new functionality of the history, the `visualize_polyfit()` in `pipeline_functions.py` is adapted to take the history as additional optional input. In addition to the function originally developed in `2_develop_pipeline.ipynb`, the adapted functions performs the following steps:
 
-Here's a [link to my video result](./project_video.mp4)
+* smoothing over history
+* sanity checks
+ * top and bottom edges of the fitted polynomials have to be in a certain range
+ * lane width has to be within a defined range
+ * both curvatures have to be in the same magnitude
+ * the fitted polynomials should have no intersection in the plot range
+ * if on of the checks fails, the less reliable lane marking is replaced by the other and shifted by the last reliable lane width 
 
-The image processing pipeline that was established to find the lane lines in images successfully processes the video. The output here should be a new video where the lanes are identified in every frame, and outputs are generated regarding the radius of curvature of the lane and vehicle position within the lane. The pipeline should correctly map out curved lines and not fail when shadows or pavement color changes are present. The output video should be linked to in the writeup and/or saved and submitted with the project.
+An example output video, where the developed algorithms performs very well can be found under the following [link](./output_videos/project_video_final.mp4). A more challenging example with difficult to detect lane lines, confusing vertical structures and demanding shadow situations [challenging](./output_videos/challenge_video_final.mp4). As can be seen, the algorithm performs also on that example reasonable good.
 
----
 
 ### Discussion
 
-#### 1. Briefly discuss any problems / issues you faced in your implementation of this project.  Where will your pipeline likely fail?  What could you do to make it more robust?
+[very challenging](./output_videos/harder_challenge_video_final.mp4) shows another axample in a really challenging environment. As can be seen, the algorithm has some issues when facing:
 
-Here I'll talk about the approach I took, what techniques I used, what worked and why, where the pipeline might fail and how I might improve it if I were going to pursue this project further. 
+* very curvy road sections
+* washed out lane markings - this is especially problematic for dashed lane markings
+* confusing vertical structures
+* when the lightning sutations change abruptly
 
-Discussion includes some consideration of problems/issues faced, what could be improved about their algorithm/pipeline, and what hypothetical cases would cause their pipeline to fail.
+In order to solve these issues and to further improve the performance the following steps ideas should be considered:
 
+* in very curvy situations it could be a good idea to use an adapted region of interest for example as maximum area of the original mask and the last detected lane polygon (expanded by a few pixels)
+* the search for pixels belonging to left and right marking should be guided by the last detected polynomial, therefore situations where pixels belonging to the left marking are assigned to the right one (and contrary) should be prevented.
